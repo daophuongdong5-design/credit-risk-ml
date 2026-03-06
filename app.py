@@ -1,50 +1,28 @@
 import streamlit as st
-import numpy as np
+import pandas as pd
 import pickle
+import os
 
-model = pickle.load(open("credit_risk_model.pkl","rb"))
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 
-st.title("AI Credit Risk Scoring System")
+MODEL_FILE = "credit_risk_model.pkl"
 
-st.write("Enter customer information")
+# Train model if not exist
+if not os.path.exists(MODEL_FILE):
 
-income = st.number_input("Income",1000,20000)
-employment = st.number_input("Employment Length (years)",0,40)
-debt_ratio = st.slider("Debt Ratio",0.0,1.0)
-credit_score = st.number_input("Credit Score",300,850)
+    df = pd.read_csv("credit_risk_dataset_10000.csv")
 
-loan_purpose = st.selectbox(
-"Loan Purpose",
-["home","car","education","business","personal"]
-)
+    le = LabelEncoder()
+    df["loan_purpose"] = le.fit_transform(df["loan_purpose"])
 
-purpose_map = {
-"home":0,
-"car":1,
-"education":2,
-"business":3,
-"personal":4
-}
+    X = df.drop("default_risk", axis=1)
+    y = df["default_risk"]
 
-if st.button("Predict Credit Risk"):
+    model = RandomForestClassifier(n_estimators=200)
+    model.fit(X, y)
 
-    data = np.array([[
-        income,
-        employment,
-        debt_ratio,
-        credit_score,
-        purpose_map[loan_purpose]
-    ]])
+    pickle.dump(model, open(MODEL_FILE, "wb"))
 
-    risk = model.predict_proba(data)[0][1]
-
-    st.write("Risk Score:", round(risk*100,2),"%")
-
-    if risk < 0.3:
-        st.success("Loan Approved")
-
-    elif risk < 0.6:
-        st.warning("Need Manual Review")
-
-    else:
-        st.error("High Risk - Reject")
+# Load model
+model = pickle.load(open(MODEL_FILE,"rb"))
